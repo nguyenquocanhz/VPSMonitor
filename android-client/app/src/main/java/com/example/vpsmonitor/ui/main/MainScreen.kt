@@ -40,6 +40,7 @@ import com.example.vpsmonitor.ui.dialogs.AddServerDialog
 import com.example.vpsmonitor.ui.dialogs.EditServerDialog
 import com.example.vpsmonitor.ui.tabs.DashboardTab
 import com.example.vpsmonitor.ui.tabs.LanScanTab
+import com.example.vpsmonitor.ui.tabs.MultiServerTab
 import com.example.vpsmonitor.ui.tabs.SftpExplorerTab
 import com.example.vpsmonitor.ui.tabs.SshTerminalTab
 import com.example.vpsmonitor.ssh.runSshTestConnection
@@ -79,7 +80,22 @@ fun MainScreen(
   }
 
   val activeServer = remember(serversList, selectedServerId) {
-    serversList.firstOrNull { it.id == selectedServerId } ?: serversList.firstOrNull()
+    if (serversList.size == 1) {
+      serversList.firstOrNull()
+    } else {
+      serversList.firstOrNull { it.id == selectedServerId }
+    }
+  }
+
+  // Ensure that if we only have 1 server, selectedServerId is set to it
+  LaunchedEffect(serversList) {
+    if (serversList.size == 1) {
+      val singleSrv = serversList.first()
+      if (selectedServerId != singleSrv.id) {
+        selectedServerId = singleSrv.id
+        sharedPreferences.edit().putString("active_server_id", singleSrv.id).apply()
+      }
+    }
   }
 
   // Active Tab Index: 0 = Dashboard, 1 = SFTP Files, 2 = Remote Terminal, 3 = LAN Scan
@@ -162,19 +178,34 @@ fun MainScreen(
                     color = Color.White
                   )
                   Text(
-                    text = if (activeTab == 3) "Subnet Device Discovery" else (activeServer?.host ?: ""),
+                    text = if (activeTab == 3) "Subnet Device Discovery" 
+                           else if (activeServer != null) activeServer.host 
+                           else "Multi-Server Overview",
                     fontSize = 12.sp,
                     color = Color(0xFF94A3B8)
                   )
                 }
               },
               navigationIcon = {
-                IconButton(onClick = { showSidebar = true }) {
-                  Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Open Sidebar",
-                    tint = Color(0xFF38BDF8)
-                  )
+                if (selectedServerId.isNotEmpty() && serversList.size > 1) {
+                  IconButton(onClick = {
+                    selectedServerId = ""
+                    sharedPreferences.edit().putString("active_server_id", "").apply()
+                  }) {
+                    Icon(
+                      imageVector = Icons.Default.ArrowBack,
+                      contentDescription = "Back to Overview",
+                      tint = Color(0xFF38BDF8)
+                    )
+                  }
+                } else {
+                  IconButton(onClick = { showSidebar = true }) {
+                    Icon(
+                      imageVector = Icons.Default.Menu,
+                      contentDescription = "Open Sidebar",
+                      tint = Color(0xFF38BDF8)
+                    )
+                  }
                 }
               },
               colors = TopAppBarDefaults.topAppBarColors(
@@ -247,9 +278,47 @@ fun MainScreen(
               label = "TabSwitcher"
             ) { targetTab ->
               when (targetTab) {
-                0 -> activeServer?.let { DashboardTab(server = it) }
-                1 -> activeServer?.let { SftpExplorerTab(server = it) }
-                2 -> activeServer?.let { SshTerminalTab(server = it) }
+                0 -> {
+                  if (activeServer == null) {
+                    MultiServerTab(
+                      servers = serversList,
+                      onServerSelect = { srv ->
+                        selectedServerId = srv.id
+                        sharedPreferences.edit().putString("active_server_id", srv.id).apply()
+                      },
+                      onTerminalClick = { srv ->
+                        selectedServerId = srv.id
+                        sharedPreferences.edit().putString("active_server_id", srv.id).apply()
+                        activeTab = 2
+                      },
+                      onFilesClick = { srv ->
+                        selectedServerId = srv.id
+                        sharedPreferences.edit().putString("active_server_id", srv.id).apply()
+                        activeTab = 1
+                      },
+                      onAddServerClick = {
+                        prefillIpAddress = ""
+                        showAddDialog = true
+                      }
+                    )
+                  } else {
+                    DashboardTab(server = activeServer)
+                  }
+                }
+                1 -> {
+                  if (activeServer != null) {
+                    SftpExplorerTab(server = activeServer)
+                  } else {
+                    PlaceholderSelectServer("Quản lý tệp tin (SFTP)")
+                  }
+                }
+                2 -> {
+                  if (activeServer != null) {
+                    SshTerminalTab(server = activeServer)
+                  } else {
+                    PlaceholderSelectServer("Dòng lệnh Terminal")
+                  }
+                }
                 3 -> LanScanTab(onSelectDevice = { ip ->
                   prefillIpAddress = ip
                   showAddDialog = true
@@ -979,6 +1048,27 @@ fun SidebarDrawer(
           }
         }
       }
+    }
+  }
+}
+
+@Composable
+fun PlaceholderSelectServer(title: String) {
+  Box(
+    modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A)).padding(24.dp),
+    contentAlignment = Alignment.Center
+  ) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+      Text("💻", fontSize = 48.sp)
+      Spacer(modifier = Modifier.height(16.dp))
+      Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+      Spacer(modifier = Modifier.height(8.dp))
+      Text(
+        text = "Vui lòng chọn một máy chủ từ màn hình Dashboard để sử dụng tính năng này.",
+        color = Color(0xFF94A3B8),
+        fontSize = 13.sp,
+        textAlign = TextAlign.Center
+      )
     }
   }
 }
