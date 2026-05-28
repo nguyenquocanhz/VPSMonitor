@@ -1015,7 +1015,7 @@ fun SidebarDrawer(
           Text("Nhà phát triển: Nguyễn Quốc Anh", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
           Text("Brand: nqatech (nguyenquocanhz)", fontSize = 11.sp, color = Color(0xFFCBD5E1))
           Text("Email: support@nqatech.com", fontSize = 11.sp, color = Color(0xFFCBD5E1))
-          Text("Version: 1.2.0 (Secure Build)", fontSize = 11.sp, color = Color(0xFF94A3B8))
+          Text("Version: 1.3.0 (Secure Build)", fontSize = 11.sp, color = Color(0xFF94A3B8))
           Spacer(modifier = Modifier.height(6.dp))
           Text("App SHA-256 Signature (Encrypted Vault):", fontSize = 10.sp, color = Color(0xFF94A3B8))
           Row(
