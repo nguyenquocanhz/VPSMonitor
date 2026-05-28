@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Hệ thống giám sát tài nguyên máy chủ Linux và Windows thời gian thực, siêu nhẹ, bảo mật tuyệt đối với mã hóa AES-256.">
+  <title>VPSMonitor - Giám sát máy chủ Real-time</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Style Sheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+
+  
+  <!-- ================= UNLOCK SCREEN ================= -->
+  <main id="unlock-screen" class="unlock-container hidden">
+    <div class="glass-card unlock-card">
+      <div class="unlock-header">
+        <div class="logo-icon">
+          <i data-lucide="shield-alert"></i>
+        </div>
+        <h1 id="unlock-title">Kích hoạt VPSMonitor</h1>
+        <p id="unlock-subtitle">Nhập Master Key của bạn để mã hóa và giải mã thông tin cấu hình máy chủ.</p>
+      </div>
+      
+      <form id="unlock-form" class="form-group">
+        <label for="master-key-input">Master Key</label>
+        <div class="input-wrapper">
+          <i data-lucide="key" class="input-icon"></i>
+          <input type="password" id="master-key-input" placeholder="••••••••••••••••" required>
+        </div>
+        <div class="error-msg id-error-unlock hidden" id="unlock-error">Master Key không hợp lệ. Vui lòng thử lại.</div>
+        <button type="submit" class="btn btn-primary" id="unlock-submit-btn">
+          <span>Mở khóa hệ thống</span>
+          <i data-lucide="unlock"></i>
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- ================= MAIN APP SCREEN ================= -->
+  <div id="app-screen" class="app-container hidden">
+    <!-- Sidebar Overlay for Mobile -->
+    <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar glass-panel">
+      <div class="sidebar-header">
+        <div class="brand">
+          <i data-lucide="activity" class="brand-icon"></i>
+          <span>VPSMonitor</span>
+        </div>
+        <span class="version-tag">v1.0.0</span>
+      </div>
+      
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item active" id="menu-home">
+          <i data-lucide="layout-grid"></i>
+          <span>Trang chủ</span>
+        </a>
+        <a href="#" class="menu-item" id="menu-add-server">
+          <i data-lucide="plus-circle"></i>
+          <span>Thêm máy chủ</span>
+        </a>
+        <a href="#" class="menu-item" id="menu-telegram">
+          <i data-lucide="bell"></i>
+          <span>Telegram Alert</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="lock-status-indicator">
+          <i data-lucide="shield" class="status-secure"></i>
+          <span>Dữ liệu đã mã hóa</span>
+        </div>
+        <div class="footer-actions">
+          <button class="btn btn-icon-only" id="btn-lock-app" title="Khóa hệ thống">
+            <i data-lucide="lock"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top navbar -->
+      <header class="top-nav">
+        <div class="nav-left">
+          <button class="btn btn-secondary btn-icon-only mobile-toggle-btn" id="btn-toggle-sidebar" title="Menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <h2 id="current-view-title">Tổng quan hệ thống</h2>
+        </div>
+        <div class="nav-right">
+          <div class="connection-status-badge">
+            <span class="pulse-dot online"></span>
+            <span>WebSocket Live</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Server Grid View (Home Dashboard) -->
+      <section id="grid-view" class="view-section">
+        <div class="grid-header">
+          <h3>Tổng quan máy chủ</h3>
+          <p>Tình trạng hoạt động và tài nguyên thời gian thực của hệ thống.</p>
+        </div>
+        <div id="server-grid" class="server-grid">
+          <!-- Server cards injected dynamically -->
+          <div class="loading-placeholder">Đang tải danh sách máy chủ...</div>
+        </div>
+        
+        <!-- Welcome View when no servers exist -->
+        <div id="empty-state" class="empty-state hidden">
+          <div class="welcome-card text-center">
+            <i data-lucide="server" class="welcome-icon"></i>
+            <h2>Chào mừng đến với VPSMonitor</h2>
+            <p>Thêm một máy chủ mới để bắt đầu giám sát hiệu năng thời gian thực.</p>
+            <button class="btn btn-primary" id="btn-welcome-add">
+              <i data-lucide="plus"></i>
+              <span>Thêm máy chủ đầu tiên</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dashboard Detail View -->
+      <section id="dashboard-view" class="view-section hidden">
+        <div class="back-link-container">
+          <button class="btn btn-secondary" id="btn-back-to-grid">
+            <i data-lucide="arrow-left"></i>
+            <span>Quay lại danh sách</span>
+          </button>
+        </div>
+
+        <!-- Server Header details card -->
+        <div class="glass-card server-info-card">
+          <div class="server-info-layout">
+            <div class="info-main">
+              <div class="status-name-row">
+                <span id="detail-status-badge" class="badge badge-offline">Offline</span>
+                <h1 id="detail-server-name">Server Name</h1>
+              </div>
+              <div class="meta-row">
+                <span class="meta-item"><i data-lucide="globe"></i> <span id="detail-server-host">127.0.0.1</span></span>
+                <span class="meta-item"><i data-lucide="monitor"></i> <span id="detail-server-os">Ubuntu Linux</span></span>
+                <span class="meta-item"><i data-lucide="clock"></i> Uptime: <span id="detail-server-uptime">unknown</span></span>
+              </div>
+            </div>
+            <div class="info-actions">
+              <button class="btn btn-secondary" id="btn-speedtest">
+                <i data-lucide="zap"></i>
+                <span>Speedtest P2P</span>
+              </button>
+              <button class="btn btn-secondary btn-icon-only" id="btn-edit-server" title="Chỉnh sửa máy chủ">
+                <i data-lucide="edit-3"></i>
+              </button>
+              <button class="btn btn-danger btn-icon-only" id="btn-delete-server" title="Xóa máy chủ">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Speedtest Result Banner -->
+          <div id="speedtest-banner" class="speedtest-banner hidden">
+            <div class="speedtest-content">
+              <i data-lucide="gauge" class="speedtest-icon"></i>
+              <div class="speed-metrics">
+                <span>Upload: <strong id="speed-upload">-</strong> MB/s</span>
+                <span class="divider">|</span>
+                <span>Download: <strong id="speed-download">-</strong> MB/s</span>
+                <span class="divider">|</span>
+                <span>Latency: <strong id="speed-latency">-</strong> ms</span>
+              </div>
+              <button class="btn-close-banner" id="btn-close-speedtest"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs-container">
+          <button class="tab-btn active" data-tab="performance-tab">
+            <i data-lucide="activity"></i>
+            <span>Hiệu năng</span>
+          </button>
+          <button class="tab-btn" data-tab="sftp-tab">
+            <i data-lucide="folder-open"></i>
+            <span>Tệp tin (SFTP)</span>
+          </button>
+        </div>
+
+        <!-- Tab 1: Performance -->
+        <div id="performance-tab" class="tab-content">
+          <!-- Metrics Grid -->
+          <div class="metrics-grid">
+            <!-- CPU Card -->
+            <div class="glass-card metric-card">
+              <div class="card-header-metric">
+                <h3>Sử dụng CPU</h3>
+                <i data-lucide="cpu" class="metric-card-icon"></i>
+              </div>
+              <div class="metric-display">
+                <div class="radial-progress-container">
+                  <svg class="radial-progress" viewBox="0 0 80 80">
+                    <circle class="radial-bg" cx="40" cy="40" r="34"></circle>
+                    <circle class="radial-bar" id="cpu-radial-bar" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"></circle>
+                  </svg>
+                  <div class="radial-value" id="cpu-pct">0%</div>
+                </div>
+                <div class="metric-chart-container">
+                  <canvas id="cpu-realtime-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- RAM Card -->
+            <div class="glass-card metric-card">
+              <div class="card-header-metric">
+                <h3>Sử dụng RAM</h3>
+                <i data-lucide="hard-drive" class="metric-card-icon"></i>
+              </div>
+              <div class="metric-display">
+                <div class="radial-progress-container">
+                  <svg class="radial-progress" viewBox="0 0 80 80">
+                    <circle class="radial-bg" cx="40" cy="40" r="34"></circle>
+                    <circle class="radial-bar" id="ram-radial-bar" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"></circle>
+                  </svg>
+                  <div class="radial-value" id="ram-pct">0%</div>
+                </div>
+                <div class="metric-chart-container">
+                  <canvas id="ram-realtime-chart"></canvas>
+                </div>
+              </div>
+              <div class="metric-detail-footer">
+                <span>Đã dùng: <strong id="ram-used">0.0 GB</strong> / <span id="ram-total">0.0 GB</span></span>
+              </div>
+            </div>
+
+            <!-- Disk Card -->
+            <div class="glass-card metric-card disk-card-layout">
+              <div class="card-header-metric">
+                <h3>Dung lượng Ổ cứng</h3>
+                <i data-lucide="database" class="metric-card-icon"></i>
+              </div>
+              <div class="disk-progress-section">
+                <div class="progress-bar-container">
+                  <div class="progress-bar" id="disk-progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="disk-values">
+                  <span id="disk-pct-text">Đã dùng: 0%</span>
+                  <span id="disk-detail-text">0.0 GB / 0.0 GB</span>
+                </div>
+              </div>
+              <div class="latency-display-section">
+                <div class="latency-item">
+                  <span class="lbl"><i data-lucide="activity"></i> RTT Latency</span>
+                  <span class="val" id="network-latency">-- ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- History Chart Section (Last 24 hours) -->
+          <div class="glass-card history-card">
+            <div class="card-header-metric">
+              <h3>Lịch sử sử dụng tài nguyên (24 Giờ qua)</h3>
+              <i data-lucide="history" class="metric-card-icon"></i>
+            </div>
+            <div class="history-chart-wrapper">
+              <canvas id="history-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: SFTP File Manager -->
+        <div id="sftp-tab" class="tab-content hidden">
+          <div class="glass-card sftp-card">
+            <div class="sftp-header">
+              <div class="sftp-breadcrumb" id="sftp-breadcrumb">
+                <!-- Breadcrumbs like / root / var / www -->
+              </div>
+              <div class="sftp-actions">
+                <button class="btn btn-secondary" id="btn-sftp-refresh" title="Làm mới">
+                  <i data-lucide="refresh-cw"></i>
+                </button>
+                <button class="btn btn-primary" id="btn-sftp-upload" title="Tải tệp lên">
+                  <i data-lucide="upload"></i>
+                  <span>Tải lên</span>
+                </button>
+                <input type="file" id="sftp-upload-input" class="hidden" multiple>
+              </div>
+            </div>
+            
+            <div class="sftp-file-list-container">
+              <table class="sftp-table">
+                <thead>
+                  <tr>
+                    <th>Tên</th>
+                    <th>Kích thước</th>
+                    <th>Ngày sửa đổi</th>
+                    <th>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody id="sftp-file-list">
+                  <!-- Files and directories will be injected here -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ================= SERVER DIALOG MODAL ================= -->
+  <div id="server-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-header">
+        <h2 id="modal-title">Thêm máy chủ mới</h2>
+        <button class="btn-close-modal" id="btn-close-modal"><i data-lucide="x"></i></button>
+      </div>
+      
+      <form id="server-form" class="modal-form">
+        <input type="hidden" id="server-id-input">
+        
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="server-name-input">Tên hiển thị</label>
+            <input type="text" id="server-name-input" placeholder="Ví dụ: Web Server Production" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="server-os-input">Hệ điều hành</label>
+            <select id="server-os-input">
+              <option value="linux">Linux (Ubuntu/CentOS/Alma)</option>
+              <option value="windows">Windows Server 2019+</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-3">
+            <label for="server-host-input">Địa chỉ IP / Domain</label>
+            <input type="text" id="server-host-input" placeholder="192.168.1.100 hoặc domain.com" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="server-port-input">Cổng SSH</label>
+            <input type="number" id="server-port-input" value="22" placeholder="22" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="server-user-input">Tên đăng nhập</label>
+            <input type="text" id="server-user-input" placeholder="root / administrator" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="server-auth-input">Kiểu xác thực</label>
+            <select id="server-auth-input">
+              <option value="password">Mật khẩu (Password)</option>
+              <option value="ssh_key">SSH Private Key</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Auth Credential Fields -->
+        <div id="auth-password-group" class="form-group">
+          <label for="server-password-input">Mật khẩu truy cập</label>
+          <input type="password" id="server-password-input" placeholder="Nhập mật khẩu máy chủ">
+        </div>
+
+        <div id="auth-sshkey-group" class="form-group hidden">
+          <label for="server-sshkey-input">Nội dung SSH Private Key (.pem, id_rsa, id_ed25519)</label>
+          <textarea id="server-sshkey-input" rows="6" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"></textarea>
+          
+          <div class="form-group margin-top-sm">
+            <label for="server-passphrase-input">Mật khẩu bảo vệ Key (nếu có)</label>
+            <input type="password" id="server-passphrase-input" placeholder="Để trống nếu khóa không có mật mã bảo vệ">
+          </div>
+        </div>
+
+        <div class="error-msg id-error-modal hidden" id="modal-error">Vui lòng nhập đầy đủ thông tin yêu cầu.</div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-test-connection">
+            <i data-lucide="radio"></i>
+            <span>Test Connection</span>
+          </button>
+          
+          <div class="footer-right">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Hủy</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-server">
+              <i data-lucide="save"></i>
+              <span>Lưu cấu hình</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= TELEGRAM CONFIG MODAL ================= -->
+  <div id="telegram-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-header">
+        <h2>Cấu hình Telegram Alert</h2>
+        <button class="btn-close-modal" id="btn-close-telegram-modal"><i data-lucide="x"></i></button>
+      </div>
+      
+      <form id="telegram-form" class="modal-form">
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="telegram-enabled-input">
+            <span>Kích hoạt cảnh báo qua Telegram</span>
+          </label>
+        </div>
+
+        <div id="telegram-details-group">
+          <div class="form-group">
+            <label for="telegram-token-input">Telegram Bot Token</label>
+            <input type="password" id="telegram-token-input" placeholder="5555555555:AAH...">
+          </div>
+
+          <div class="form-group">
+            <label for="telegram-chatid-input">Chat ID nhận cảnh báo</label>
+            <input type="text" id="telegram-chatid-input" placeholder="Ví dụ: -100123456789 hoặc 123456789">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="telegram-cpu-input">Ngưỡng CPU (%)</label>
+              <input type="number" id="telegram-cpu-input" min="1" max="100" value="90">
+            </div>
+            <div class="form-group flex-1">
+              <label for="telegram-ram-input">Ngưỡng RAM (%)</label>
+              <input type="number" id="telegram-ram-input" min="1" max="100" value="90">
+            </div>
+            <div class="form-group flex-1">
+              <label for="telegram-disk-input">Ngưỡng Ổ cứng (%)</label>
+              <input type="number" id="telegram-disk-input" min="1" max="100" value="90">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="telegram-status-input" checked>
+              <span>Cảnh báo khi máy chủ Mất kết nối / Online trở lại</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="error-msg id-error-telegram hidden" id="telegram-error">Vui lòng điền đầy đủ Token và Chat ID.</div>
+        <div class="success-msg hidden" id="telegram-success">Lưu cấu hình thành công!</div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-test-telegram">
+            <i data-lucide="send"></i>
+            <span>Gửi tin thử nghiệm</span>
+          </button>
+          
+          <div class="footer-right">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-telegram">Hủy</button>
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="save"></i>
+              <span>Lưu cấu hình</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

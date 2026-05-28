@@ -1,0 +1,29 @@
+{
+  "name": "vpsmonitor",
+  "version": "1.0.0",
+  "description": "VPS and Server Monitoring Dashboard",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "build:exe": "node build.js && npx pkg dist/server.bundle.js --targets node18-win-x64 --output dist/vpsmonitor.exe"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "express": "^5.2.1",
+    "sqlite3": "^6.0.1",
+    "ssh2": "^1.17.0",
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ]
+  }
+}
